@@ -1,0 +1,12 @@
+# Runtime state
+state/archive-log.jsonl
+state/config.json
+
+# Packaged artifact
+*.skill
+
+# macOS
+.DS_Store
+
+# Vendored local editor config
+vendor/wechat-article-extractor-skill/.claude/
