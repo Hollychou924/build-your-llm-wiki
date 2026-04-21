@@ -1,72 +1,70 @@
 # build-your-llm-wiki
 
-一个面向 OpenClaw / Claude Code 用户的个人知识库 starter kit。
+Build your own local LLM Wiki from zero to one.
 
-仓库定位：帮你从 0 到 1 搭建自己的本地 LLM Wiki。
+`build-your-llm-wiki` is a starter kit for OpenClaw / Claude Code users who want more than a bookmark pile. Feed it articles, WeChat posts, blog posts, and long-form references, and it helps turn them into a durable local knowledge system.
 
-目标不是“把链接存下来”，而是让用户安装完之后，就能开始喂文章，并逐步长出：
-- 原始归档
-- memory / 日记 / 总日志
-- 实体 / 概念 / 对比 / 综述 / 主题总结 / 洞察
-- 导航页与后续治理能力
+## Why this exists
+Most "save for later" flows stop at the link or a one-shot summary. This repo is opinionated about a stronger workflow:
+- keep a durable raw archive
+- leave a trace in daily logs and memory
+- decide whether the material deserves entities, concepts, comparisons, syntheses, summaries, or insights
+- keep the whole system navigable instead of letting notes rot into a folder dump
 
-## 当前状态
-**Beta，可试装。**
+## What you get
+When you feed in a URL, the starter kit can:
+- extract article text from WeChat posts, blogs, and long-form web pages
+- write raw archives with lint checks
+- write `memory/`, daily logs, and total logs
+- run six-bucket upgrade checks
+- generate first-draft knowledge pages
+- update index/navigation when the knowledge layer changes
 
-这版已经适合：
-- 内部用户
-- 熟人
-- 熟悉 AI workflow 的用户
-- 想开始搭本地知识库的人
-
-这版暂不承诺：
-- 陌生用户零学习成本上手
-- 所有网页类型都完全稳定
-- 所有知识初稿都已经达到最终成稿质量
-
-## 你装完会得到什么
-当你喂一篇文章链接进来，starter kit 会自动：
-- 抓正文
-- 判断文章来源类型
-- 写 raw 原始归档
-- 跑 markdown lint
-- 写 `memory/`
-- 写日记 / 总日志
-- 做六目录检查
-- 生成知识层升级草稿 / 初稿
-- 在知识层变化时更新首页索引
-
-## 最短使用路径
-### 1. 初始化
+## Quick start
+### 1. Bootstrap your workspace
 ```bash
 node /path/to/article-archivist/scripts/bootstrap.js [workspace-dir] [--vault /path/to/obsidian/vault]
 ```
 
-### 2. 自检
+### 2. Run doctor
 ```bash
 node /path/to/article-archivist/scripts/doctor.js
 ```
 
-### 3. 开启微信文章能力（推荐）
+### 3. Enable stable WeChat extraction (recommended)
 ```bash
 node /path/to/article-archivist/scripts/ensure_wechat_extractor.js
 ```
 
-这一步会：
-- 先检查是否已安装 `skillhub`
-- 若未安装，则按 SkillHub 官方方式安装 **CLI only**
-- 再通过 `skillhub install wechat-article-extractor-skill` 安装微信文章提取技能
-- 安装后 `extract_wechat.js` 会优先使用这个已安装技能，而不是只依赖内嵌 vendor
+This will:
+- check whether `skillhub` is installed
+- install SkillHub CLI if needed
+- install `wechat-article-extractor-skill`
+- let `extract_wechat.js` prefer the installed extractor over the bundled fallback
 
-### 4. 喂第一篇文章
+### 4. Ingest your first article
 ```bash
 node /path/to/article-archivist/scripts/run_ingest.js <url> [--workspace /path/to/workspace]
 ```
 
-以后日常只需要记住一个入口：
+For day-to-day use, this is the only command you need to remember:
 ```bash
 node /path/to/article-archivist/scripts/run_ingest.js <url>
 ```
+
+## Current status
+**Beta, but real and usable.**
+
+Good fit for:
+- internal users
+- friends and early testers
+- people already comfortable with AI workflows
+- anyone who wants to build a local-first knowledge base instead of just collecting links
+
+Not promising yet:
+- zero-learning-curve onboarding for complete newcomers
+- perfect extraction stability for every site on the web
+- final-polish writing quality for every generated knowledge draft
 
 ## 当前脚本角色
 - `bootstrap.js`：初始化目录和默认骨架
