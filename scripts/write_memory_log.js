@@ -16,10 +16,20 @@ const englishDailyPath = path.join(workspace, 'daily', `${date}.md`);
 const zhDailyPath = path.join(workspace, '日志', '日记', `${date}.md`);
 const totalLogPath = path.join(workspace, '日志', '总日志', '总日志.md');
 
-fs.mkdirSync(path.dirname(memoryPath), { recursive: true });
-fs.mkdirSync(path.dirname(englishDailyPath), { recursive: true });
-fs.mkdirSync(path.dirname(zhDailyPath), { recursive: true });
-fs.mkdirSync(path.dirname(totalLogPath), { recursive: true });
+function canWriteParent(targetPath) {
+  const dir = path.dirname(targetPath);
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+canWriteParent(memoryPath);
+const englishDailyWritable = canWriteParent(englishDailyPath);
+canWriteParent(zhDailyPath);
+canWriteParent(totalLogPath);
 
 const title = data.title || 'Untitled';
 const url = data.url || '';
@@ -34,8 +44,10 @@ const zhDailyBlock = `\n## ${title}\n- 来源: ${source}\n- 归档: ${rawPath}\n
 const totalLogBlock = `\n- ${date}: ${title} -> ${rawPath || url}\n`;
 
 fs.appendFileSync(memoryPath, memoryBlock);
-fs.appendFileSync(englishDailyPath, englishDailyBlock);
+if (englishDailyWritable) {
+  fs.appendFileSync(englishDailyPath, englishDailyBlock);
+}
 fs.appendFileSync(zhDailyPath, zhDailyBlock);
 fs.appendFileSync(totalLogPath, totalLogBlock);
 
-console.log(JSON.stringify({ ok: true, memoryPath, englishDailyPath, zhDailyPath, totalLogPath }, null, 2));
+console.log(JSON.stringify({ ok: true, memoryPath, englishDailyPath: englishDailyWritable ? englishDailyPath : null, zhDailyPath, totalLogPath }, null, 2));
