@@ -69,6 +69,19 @@ function warn(msg) {
   console.warn(`[bootstrap] ${msg}`);
 }
 
+function printCliEnableGuide() {
+  warn('========================================');
+  warn(' Obsidian CLI setup still needs one manual step ');
+  warn('========================================');
+  warn('1. Open Obsidian');
+  warn('2. Go to Settings -> General -> Advanced');
+  warn('3. Enable "Allow external apps to communicate with Obsidian"');
+  warn('4. Restart Obsidian if needed');
+  warn('5. Reload your shell: source ~/.zshrc (or ~/.bashrc)');
+  warn('6. Then re-run: node scripts/doctor.js');
+  warn('========================================');
+}
+
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -131,6 +144,7 @@ function updateState(patch) {
 
 let obsidianInstalled = isObsidianInstalled();
 let vaultDir = vaultArg;
+let needsCliGuide = false;
 
 if (!obsidianInstalled) {
   log('Obsidian not detected. Attempting install...');
@@ -139,12 +153,14 @@ if (!obsidianInstalled) {
     ensurePath();
     launchObsidian();
     obsidianInstalled = true;
+    needsCliGuide = !checkCli();
   } else {
     warn('Obsidian install failed. Falling back to plain filesystem mode.');
   }
 } else if (!checkCli()) {
   ensurePath();
   launchObsidian();
+  needsCliGuide = true;
 }
 
 if (obsidianInstalled && !vaultDir) {
@@ -198,3 +214,8 @@ updateState({
 log('Bootstrap complete.');
 log(`Workspace: ${targetDir}`);
 if (vaultDir) log(`Vault: ${vaultDir}`);
+
+if (needsCliGuide) {
+  warn('Obsidian is installed, but the CLI is not ready yet.');
+  printCliEnableGuide();
+}

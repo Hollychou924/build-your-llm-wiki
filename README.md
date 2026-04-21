@@ -26,6 +26,14 @@ When you feed in a URL, the starter kit can:
 node /path/to/article-archivist/scripts/bootstrap.js [workspace-dir] [--vault /path/to/obsidian/vault]
 ```
 
+If Obsidian is not installed yet, the bootstrap flow will try to install it, add the CLI path to your shell, and launch Obsidian for you. If the Obsidian CLI is still not enabled, the script now prints an explicit next-step guide telling the user to open:
+- `Settings -> General -> Advanced`
+- enable `Allow external apps to communicate with Obsidian`
+- restart Obsidian if needed
+- reload the shell and re-run `node scripts/doctor.js`
+
+If automatic install fails, the starter kit falls back to plain filesystem mode instead of blocking initialization.
+
 ### 2. Run doctor
 ```bash
 node /path/to/article-archivist/scripts/doctor.js

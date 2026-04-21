@@ -11,6 +11,7 @@
 3. **自动将 Obsidian CLI 加入系统 PATH**（写入 `~/.zshrc` 或 `~/.bashrc`，无需用户手动操作）
 4. **安装后自动启动 Obsidian**，并提示用户开启 CLI（设置 → 通用 → 高级 → 允许外部应用通信）
 5. **若自动安装失败**（例如无 GUI 环境），则回退到纯文件系统模式
+6. **若 Obsidian 已安装但 CLI 未开启**，bootstrap 会在结束时打印明确引导，提示用户去 `Settings -> General -> Advanced` 开启 `Allow external apps to communicate with Obsidian`，然后重启 Obsidian、重新加载 shell，并执行 `node scripts/doctor.js`
 
 ## 一键初始化
 
