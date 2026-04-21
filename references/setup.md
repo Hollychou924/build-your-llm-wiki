@@ -18,6 +18,21 @@
 node /path/to/article-archivist/scripts/bootstrap.js [工作目录] [--vault /path/to/obsidian/vault]
 ```
 
+## 微信文章抓取（推荐额外安装）
+
+如果要把微信公众号文章抓取做稳，推荐额外执行：
+
+```bash
+node /path/to/article-archivist/scripts/ensure_wechat_extractor.js
+```
+
+这一步会：
+1. 检查是否已安装 `skillhub`
+2. 若未安装，则按 SkillHub 官方方式安装 **CLI only**
+3. 再执行 `skillhub install wechat-article-extractor-skill`
+
+这样 starter kit 后续处理微信文章时，可以优先依赖专门的提取技能，而不是只靠内置 fallback。
+
 - **默认行为**：检测/安装 Obsidian → 查找默认 vault → 在 vault 内创建目录 → 在工作目录创建符号链接
 - **若不想用 Obsidian**（或无法安装），不传递 `--vault` 且脚本安装失败后，会自动在当前目录创建纯文件系统结构
 - **手动指定 vault**：通过 `--vault` 参数强制使用某个 Obsidian vault 路径

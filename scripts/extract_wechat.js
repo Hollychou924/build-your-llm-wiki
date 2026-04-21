@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execSync } = require('child_process');
 
 const url = process.argv[2];
 const out = process.argv[3] || '/tmp/wechat_extract_result.json';
@@ -16,14 +17,25 @@ if (!url) {
 }
 
 const vendorDir = path.join(__dirname, '..', 'vendor', 'wechat-article-extractor-skill');
-const extractPath = path.join(vendorDir, 'scripts/extract.js');
+const embeddedExtractPath = path.join(vendorDir, 'scripts/extract.js');
+const homeSkillExtractPath = path.join(process.env.HOME || '', '.openclaw', 'skills', 'wechat-article-extractor-skill', 'scripts', 'extract.js');
 const stateDir = path.join(__dirname, '..', 'state');
 const stateConfigPath = path.join(stateDir, 'config.json');
 const stateLogPath = path.join(stateDir, 'archive-log.jsonl');
 
-if (!fs.existsSync(extractPath)) {
-  console.error('Missing embedded wechat extractor:', extractPath);
-  process.exit(2);
+function hasBin(cmd) {
+  try {
+    execSync(`command -v ${cmd}`, { stdio: 'ignore', shell: '/bin/bash' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveExtractPath() {
+  if (fs.existsSync(homeSkillExtractPath)) return { path: homeSkillExtractPath, source: 'skillhub-installed' };
+  if (fs.existsSync(embeddedExtractPath)) return { path: embeddedExtractPath, source: 'embedded-vendor' };
+  return null;
 }
 
 function urlHash(input) {
@@ -43,9 +55,7 @@ function readState() {
     archivedUrls: {},
   };
   try {
-    if (!fs.existsSync(stateConfigPath)) {
-      return base;
-    }
+    if (!fs.existsSync(stateConfigPath)) return base;
     return { ...base, ...JSON.parse(fs.readFileSync(stateConfigPath, 'utf8')) };
   } catch {
     return base;
@@ -64,9 +74,17 @@ function appendLog(entry) {
   fs.appendFileSync(stateLogPath, JSON.stringify({ time: new Date().toISOString(), ...entry }) + '\n');
 }
 
-const { extract } = require(extractPath);
-
 (async () => {
+  const resolved = resolveExtractPath();
+  if (!resolved) {
+    const message = hasBin('skillhub')
+      ? 'wechat extractor not found. Run: skillhub install wechat-article-extractor-skill'
+      : 'wechat extractor not found. Run: node scripts/ensure_wechat_extractor.js';
+    console.error(message);
+    process.exit(2);
+  }
+
+  const { extract } = require(resolved.path);
   const hash = urlHash(url);
   const state = readState();
   const duplicate = Boolean(state.archivedUrls && state.archivedUrls[hash]);
@@ -78,7 +96,7 @@ const { extract } = require(extractPath);
       articleArchivist: {
         duplicate,
         urlHash: hash,
-        extractor: 'wechat-skill',
+        extractor: resolved.source,
         firstSeenAt: duplicate ? state.archivedUrls[hash].time : new Date().toISOString(),
       },
     };
@@ -89,20 +107,20 @@ const { extract } = require(extractPath);
     archivedUrls[hash] = {
       url,
       time: new Date().toISOString(),
-      extractor: 'wechat-skill',
+      extractor: resolved.source,
       success,
       output: out,
     };
 
     writeState({
-      lastExtractor: 'wechat-skill',
+      lastExtractor: resolved.source,
       lastFailure: success ? null : (result && (result.msg || result.code)) || 'unknown failure',
       archivedUrls,
     });
 
     appendLog({
       event: 'extract',
-      extractor: 'wechat-skill',
+      extractor: resolved.source,
       url,
       urlHash: hash,
       duplicate,
@@ -112,18 +130,15 @@ const { extract } = require(extractPath);
       message: result && result.msg,
     });
 
-    if (duplicate) {
-      console.warn('Duplicate URL detected in state log:', url);
-    }
-    console.log('Saved to', out);
+    process.stdout.write(JSON.stringify(wrapped, null, 2));
   } catch (err) {
     writeState({
-      lastExtractor: 'wechat-skill',
+      lastExtractor: resolved.source,
       lastFailure: err.message || String(err),
     });
     appendLog({
       event: 'extract',
-      extractor: 'wechat-skill',
+      extractor: resolved.source,
       url,
       urlHash: hash,
       duplicate,

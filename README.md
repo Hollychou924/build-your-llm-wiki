@@ -1,160 +1,131 @@
-# article-archivist
+# build-your-llm-wiki
 
-An Obsidian-first OpenClaw skill for turning articles into a durable personal knowledge base.
+一个面向 OpenClaw / Claude Code 用户的个人知识库 starter kit。
 
-It packages the workflow behind my own article archiving system into a reusable skill that other OpenClaw users can install and run from zero to one.
+仓库定位：帮你从 0 到 1 搭建自己的本地 LLM Wiki。
 
-## What it does
+目标不是“把链接存下来”，而是让用户安装完之后，就能开始喂文章，并逐步长出：
+- 原始归档
+- memory / 日记 / 总日志
+- 实体 / 概念 / 对比 / 综述 / 主题总结 / 洞察
+- 导航页与后续治理能力
 
-- Archives shared articles, WeChat posts, blog posts, and reference pages
-- Uses a decision tree instead of a mechanical checklist to decide what to update
-- Creates and maintains:
-  - `raw/` for source-preserving article archives
-  - `daily/` for day-level logs
-  - `memory/` for local durable notes
-  - `wiki/entities/`, `wiki/concepts/`, `wiki/comparisons/`, `wiki/syntheses/`
-  - `summaries/` and `insights/`
-  - `index.md` when knowledge-layer files change
-- Prefers Obsidian by default, but falls back to plain filesystem mode when needed
-- Bundles WeChat extraction so users do not need to install a second skill
+## 当前状态
+**Beta，可试装。**
 
-## Why this exists
+这版已经适合：
+- 内部用户
+- 熟人
+- 熟悉 AI workflow 的用户
+- 想开始搭本地知识库的人
 
-Most article-saving flows stop at “save the link” or “write a summary”. That is too weak.
+这版暂不承诺：
+- 陌生用户零学习成本上手
+- 所有网页类型都完全稳定
+- 所有知识初稿都已经达到最终成稿质量
 
-This skill is opinionated around a stronger workflow:
+## 你装完会得到什么
+当你喂一篇文章链接进来，starter kit 会自动：
+- 抓正文
+- 判断文章来源类型
+- 写 raw 原始归档
+- 跑 markdown lint
+- 写 `memory/`
+- 写日记 / 总日志
+- 做六目录检查
+- 生成知识层升级草稿 / 初稿
+- 在知识层变化时更新首页索引
 
-1. Save the article in a durable raw form
-2. Leave a trace in the daily log
-3. Decide whether it deserves entities, concepts, comparisons, syntheses, summaries, or insights
-4. Keep the index navigable
-
-The goal is not just collecting links. The goal is building a searchable, compounding knowledge base.
-
-## Key design decisions
-
-- **Obsidian-first**: best default experience for a personal knowledge base
-- **Plain filesystem fallback**: the workflow still works without GUI or Obsidian
-- **WeChat-first extraction path**: embedded extractor first, local curl+python fallback second
-- **Decision tree over checklist**: not every article should touch every directory
-- **Local `memory/`**: `memory/` and `templates/` stay in the workspace, not inside the Obsidian vault
-- **Self-contained packaging**: the repo vendors the WeChat extractor dependency so the generated `.skill` is installable as a single artifact
-
-## Repository layout
-
-```text
-article-archivist/
-├── SKILL.md
-├── README.md
-├── assets/
-│   └── raw-template.md
-├── references/
-│   ├── setup.md
-│   ├── workflow-tree.md
-│   ├── extraction-methods.md
-│   ├── naming-conventions.md
-│   ├── gotchas.md
-│   └── guardrails.md
-├── scripts/
-│   ├── bootstrap.js
-│   ├── install-obsidian.js
-│   ├── extract_wechat.js
-│   └── extract_wechat_fallback.py
-├── state/
-│   ├── README.md
-│   ├── config.json
-│   └── archive-log.example.jsonl
-└── vendor/
-    └── wechat-article-extractor-skill/
-```
-
-## Installation
-
-You can install from the packaged `.skill` artifact or use the source directly.
-
-### Option A: use the packaged skill
-
-Place `article-archivist.skill` into your OpenClaw skills directory and install it using your normal OpenClaw workflow.
-
-### Option B: use the source directly
-
-Clone this repository into your local skills folder, then reference it from OpenClaw.
-
-## Quick start
-
-Run bootstrap first:
-
+## 最短使用路径
+### 1. 初始化
 ```bash
 node /path/to/article-archivist/scripts/bootstrap.js [workspace-dir] [--vault /path/to/obsidian/vault]
 ```
 
-Bootstrap behavior:
+### 2. 自检
+```bash
+node /path/to/article-archivist/scripts/doctor.js
+```
 
-- Detects whether Obsidian is installed
-- Attempts to install Obsidian if it is missing
-- Adds Obsidian CLI to shell `PATH` on macOS/Linux
-- Launches Obsidian
-- Detects the default vault when possible
-- Creates vault directories and workspace symlinks
-- Falls back to plain filesystem mode if Obsidian setup is not available
+### 3. 开启微信文章能力（推荐）
+```bash
+node /path/to/article-archivist/scripts/ensure_wechat_extractor.js
+```
 
-Then archive articles using the workflow defined in `SKILL.md` and `references/workflow-tree.md`.
+这一步会：
+- 先检查是否已安装 `skillhub`
+- 若未安装，则按 SkillHub 官方方式安装 **CLI only**
+- 再通过 `skillhub install wechat-article-extractor-skill` 安装微信文章提取技能
+- 安装后 `extract_wechat.js` 会优先使用这个已安装技能，而不是只依赖内嵌 vendor
 
-## How WeChat extraction works
+### 4. 喂第一篇文章
+```bash
+node /path/to/article-archivist/scripts/run_ingest.js <url> [--workspace /path/to/workspace]
+```
 
-For WeChat articles:
+以后日常只需要记住一个入口：
+```bash
+node /path/to/article-archivist/scripts/run_ingest.js <url>
+```
 
-1. `scripts/extract_wechat.js` is the primary path
-2. `scripts/extract_wechat_fallback.py` is the fallback path
-3. The workflow should never prefer generic `web_fetch` first for WeChat posts
+## 当前脚本角色
+- `bootstrap.js`：初始化目录和默认骨架
+- `doctor.js`：检查依赖与配置状态
+- `run_ingest.js`：统一日常归档入口
+- `fetch_article.js`：内容抓取路由
+- `fetch_generic_web.js`：普通网页正文抽取
+- `archive_article.js`：workspace 级查重、raw、图片、lint
+- `write_memory_log.js`：写 `memory/`、日记、总日志
+- `check_upgrade_targets.js`：六目录检查与升级判断
+- `upgrade_knowledge.js`：生成实体 / 概念 / 对比 / 综述 / 洞察初稿
+- `update_index.js`：知识层变动时更新导航
+- `regression_test.js`：多 URL 回归测试
+- `ensure_wechat_extractor.js`：检查 SkillHub CLI 并安装 `wechat-article-extractor-skill`
+- `extract_wechat.js`：微信主链
+- `extract_wechat_fallback.py`：微信 fallback
 
-This matters because many WeChat article bodies live in hidden DOM containers that generic extractors often miss.
+## Beta 验收建议
+至少用 3 类链接各试一篇：
+1. 微信公众号文章（先跑 `ensure_wechat_extractor.js`）
+2. 公司 / 产品博客
+3. 普通技术长文网页
 
-## State and memory
+跑默认回归：
+```bash
+node /path/to/article-archivist/scripts/regression_test.js
+```
 
-The skill keeps a small internal runtime state under `state/`.
+## 当前已具备
+- 初始化骨架
+- 自检
+- 统一归档入口
+- 微信 / 普通网页双入口
+- raw / memory / 中英双日志
+- 六目录检查
+- 升级候选判断
+- 知识页初稿生成
+- 索引自动更新
+- workspace 私有状态与去重隔离
+- 默认 beta 回归集合
 
-It is intentionally separate from the user knowledge base.
+## 还在重点优化
+- 更强的普通网页正文抽取
+- 更像知识页语言的初稿压缩
+- 更多站点的回归稳定性
+- 更顺滑的陌生用户试装体验
 
-Current state support includes:
+## 适合现在怎么推进
+最推荐的方式不是等“完美版”，而是：
+1. 先找 1-3 个熟人试装
+2. 让他们各喂 3 类链接
+3. 回收安装卡点、抽取异常和知识页粗糙感
+4. 再继续磨平说明与体验
 
-- last bootstrap mode
-- last vault/workspace path
-- last extractor used
-- last failure reason
-- seen URL hashes for future dedupe strategy
-- append-only event log for bootstrap and extraction
-
-## Public publishing note
-
-This repository is intended to be public. Because of that:
-
-- runtime state should stay sanitized
-- machine-local logs should not be committed as real history
-- local shell or private editor config should not be published unless intentional
-
-## Recommended reading
-
-- `SKILL.md`
-- `references/setup.md`
-- `references/workflow-tree.md`
-- `references/gotchas.md`
-- `references/guardrails.md`
-
-## Status
-
-This is already a usable, installable skill.
-
-It is especially strong on:
-
-- workflow completeness
-- Obsidian-first onboarding
-- self-contained packaging
-- WeChat handling
-- guardrails and gotchas
-
-The next quality step is wiring final archive completion states back into skill state, plus adding explicit duplicate URL policies.
-
-## License
-
-Add the license you want before broad distribution. If you want, MIT is the easiest default.
+## 快速查阅
+- 搭建说明：`references/setup.md`
+- 决策树：`references/workflow-tree.md`
+- 坑点：`references/gotchas.md`
+- 护栏：`references/guardrails.md`
+- Beta 试装说明：`references/beta-trial-guide.md`
+- Beta 发布口径：`references/beta-release-note.md`
+- skill 状态：`state/README.md`

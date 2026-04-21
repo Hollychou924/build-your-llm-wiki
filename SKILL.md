@@ -1,126 +1,73 @@
 ---
 name: article-archivist
-description: Use when the user shares an article, WeChat post, blog post, or reference page and wants it archived into an Obsidian-first knowledge base with raw backups, daily logs, wiki cards, summaries, insights, and index maintenance. Also use when setting up or repairing an article archiving pipeline. NOT for simple one-off reading, casual summarization without file writes, code/document repo organization, or short translation tasks.
+description: Use when the user wants a personal knowledge-base starter kit that can archive WeChat posts, blog posts, and reference pages into a durable local system. Also use when initializing, repairing, or operating an article-ingestion workflow with raw archives, logs, memory, six-bucket checks, and knowledge-layer upgrades. NOT for simple read-only summarization, casual link saving, code repo organization, or translation-only tasks.
 ---
 
 # Article Archivist
 
-完整文章归档与知识库管理工作流。安装并按本 skill 执行后，可获得与当前实例一致的归档体验。
+把文章归档、知识升级、索引维护和后续治理打包成一个可安装的 starter kit。
 
-## 前置依赖
+## 这个 skill 适合什么场景
+- 用户想从 0 到 1 搭一个本地知识库
+- 用户已经装了 OpenClaw / Claude Code，想装完 skill 就开始喂文章
+- 用户要归档公众号、博客、长文网页，并长期沉淀成可检索知识
+- 用户要修已有归档系统的目录、规则或提取链路
 
-1. **OpenClaw 环境**：需要 OpenClaw 提供的 `web_fetch`、`write`、`edit` 等内置工具（任何标准安装都具备）
-2. **Node.js**：用于运行微信公众号提取脚本和 `bootstrap.js`（任何 OpenClaw 安装环境都有 Node）
-3. **Python 3**：仅当微信公众号提取失败并启用 fallback 时需要（大多数系统自带）
-4. **Obsidian 可选**：不是必须的。纯文件系统可以直接使用。
-
-> 注：微信公众号文章提取能力已内嵌在本 skill 的 `vendor/wechat-article-extractor-skill/` 中，`node_modules` 完整打包，无需联网或额外安装。
-
-## 一键初始化（Obsidian 优先）
-
-如果你还没有目录结构，运行：
+## 第一次使用
+先运行：
 
 ```bash
-node /path/to/article-archivist/scripts/bootstrap.js [你的工作目录] [--vault /path/to/obsidian/vault]
+node /path/to/article-archivist/scripts/bootstrap.js [workspace-dir] [--vault /path/to/obsidian/vault]
 ```
 
-- **默认尝试自动安装并配置 Obsidian**：
-  - 检测系统是否已装 Obsidian，未装则自动安装（macOS: Homebrew，Linux: AppImage，Windows: winget）
-  - **自动将 Obsidian CLI 加入系统 PATH**（写入 `~/.zshrc` 或 `~/.bashrc`，无需用户手动操作）
-  - 自动启动 Obsidian，并提示开启 CLI 权限（设置 → 通用 → 高级 → 允许外部应用通信）
-- 如果自动安装失败（如服务器无图形界面），**自动回退**到纯文件系统模式。
-- 目录创建完成后，即可开始归档。
+然后运行：
 
-## 核心目录与作用
+```bash
+node /path/to/article-archivist/scripts/doctor.js
+```
 
-详见 [references/setup.md](references/setup.md)：
+## 日常使用
+用户发来文章链接后，统一走这个入口：
 
-- `daily/` — 每日日志
-- `raw/` — 原始文章归档
-- `wiki/entities/` — 实体卡
-- `wiki/concepts/` — 概念卡
-- `wiki/comparisons/` — 对比分析
-- `wiki/syntheses/` — 专题综述
-- `summaries/` — 主题摘要
-- `insights/` — 个人洞察
-- `index.md` — 顶层索引
-- `templates/` — 流程模板（可选）
+```bash
+node /path/to/article-archivist/scripts/run_ingest.js <url> [--workspace /path/to/workspace]
+```
 
-## 完整工作流程
+这个入口会自动串起：
+1. `fetch_article.js`
+2. `archive_article.js`
+3. `write_memory_log.js`
+4. `check_upgrade_targets.js`
 
-### 第 1 步：提取文章内容
+## 关键执行规则
+1. 只要决定归档，必须写：`raw/`、`daily/`、`memory/`
+2. 每篇都必须做六目录检查：实体 / 概念 / 对比 / 综述 / 主题总结 / 洞察
+3. 满足触发条件时，默认升级知识层；不升级也必须写明原因
+4. 只有知识层有变化时才更新 `index.md`
+5. 去重必须按 workspace 隔离，不能跨知识库串 URL / rawPath
+6. 微信公众号文章优先走已安装的 `wechat-article-extractor-skill`；若用户尚未安装，则引导或自动执行 `ensure_wechat_extractor.js`
+7. `memory/` 必须留在 workspace，本地独立，不写进 vault
 
-#### 微信公众号（mp.weixin.qq.com）
-- **首选**：调用 `wechat-article-extractor-skill`（见 [references/extraction-methods.md](references/extraction-methods.md)）
-- **Fallback**：用 `scripts/extract_wechat_fallback.py` 做 curl + python 本地解析
-
-#### 普通网页
-- **首选**：`web_fetch`（OpenClaw 内置）
-- **Fallback**：curl + readability / html2text 二次解析
-
-### 第 2 步：原始归档（raw/）
-
-- 保存为 `raw/YYYY-MM/YYYYMMDD-关键词-关键词.md`
-- 头部必须包含：标题、来源、原文链接、归档时间
-- 正文结构化：核心信息、关键数据、价值判断、关联标签
-- 命名规则见 [references/naming-conventions.md](references/naming-conventions.md)
-- 模板参考 [assets/raw-template.md](assets/raw-template.md)
-
-### 第 3 步：写入 Daily Log 与 memory
-
-- 在 `daily/YYYY-MM-DD.md` 记录：收到时间、文章标题、raw 路径、核心摘要、触发洞察
-- 在 `memory/YYYY-MM-DD.md` 做 workspace 本地备份
-
-### 第 4 步：知识加工决策
-
-严格按照 [references/workflow-tree.md](references/workflow-tree.md) 做 Yes/No 判断：
-
-- **必更**：`raw/` + `daily/` + `memory/`
-- **条件触发**：
-  - `wiki/entities/` — 新实体或老实体重大进展
-  - `wiki/concepts/` — 新概念/新方法/新 trade-off
-  - `summaries/` — 同主题 3 篇以上或单篇密度极高
-  - `wiki/comparisons/` — 天然对比价值
-  - `wiki/syntheses/` — 跨 2-3 篇形成高层判断
-  - `insights/` — 对当前项目有明确启发且能沉淀为可复用判断
-- **不更**：只是新闻噪音、重复已有结论、无后续复用价值
-
-### 第 5 步：维护索引
-
-只要 `wiki/`、`summaries/`、`insights/` 有新增或异动，**必须同步更新 `index.md`**。
-
-## 关键原则
-
-1. **目录存在 ≠ 必须更新**
-   - 是否写入 `wiki/comparisons/syntheses/insights`，取决于文章本身的价值，而不是目录存在。
-
-2. **Skill 的价值在坑点，不在复述说明书**
-   - 优先阅读 [references/gotchas.md](references/gotchas.md) 和 [references/guardrails.md](references/guardrails.md)。这里面是模型自己搜不到的高语境知识。
-
-3. **微信公众号必须优先用 skill**
-   - 不要一上来就用 `web_fetch` 或 curl 抓公众号，先跑内嵌微信提取器。
-
-4. **专题收口**
-   - 当同一系列积累到 3-5 篇时，不要继续零散补卡，应该收成 `wiki/syntheses/` 专题综述。
-
-5. **index.md 是硬约束**
-   - 知识层有变动就必须更新索引，否则后续检索会断链。
-
-6. **Skill 也要有自己的记忆**
-   - 运行时状态放在 `state/`，不要把 skill 自己的运行状态和用户知识库混在一起。
-
-7. **Text > Brain**
-   - 所有判断和更新都必须落盘到文件，不要依赖“这次先记在心里，下次再写”。
+## 触发升级的强条件
+满足任一条，至少升级 1 个知识层页面：
+- 同一主题 7 天内新增 >= 3 篇高相关 raw
+- 同一判断被 2 篇及以上材料互证
+- 已经能清楚写出“这批材料真正说明了什么”
 
 ## 快速查阅
+- 安装与目录说明：`references/setup.md`
+- 决策树：`references/workflow-tree.md`
+- 提取方法：`references/extraction-methods.md`
+- 坑点：`references/gotchas.md`
+- 护栏：`references/guardrails.md`
+- Beta 试装说明：`references/beta-trial-guide.md`
+- Beta 发布口径：`references/beta-release-note.md`
+- skill 状态：`state/README.md`
 
-- 目录搭建原理 → [references/setup.md](references/setup.md)
-- 决策树 → [references/workflow-tree.md](references/workflow-tree.md)
-- 提取方法 → [references/extraction-methods.md](references/extraction-methods.md)
-- 命名规范 → [references/naming-conventions.md](references/naming-conventions.md)
-- 高价值坑点 → [references/gotchas.md](references/gotchas.md)
-- 护栏 → [references/guardrails.md](references/guardrails.md)
-- Skill 状态 → [state/README.md](state/README.md)
-- raw 模板 → [assets/raw-template.md](assets/raw-template.md)
-- wechat 提取脚本 → [scripts/extract_wechat.js](scripts/extract_wechat.js)
-- wechat fallback 脚本 → [scripts/extract_wechat_fallback.py](scripts/extract_wechat_fallback.py)
+## 当前版本定位
+当前 Beta 目标是让用户装完后就能：
+- 初始化系统骨架
+- 直接喂第一篇文章
+- 跑通完整归档主链
+- 开始积累可升级的知识层
+- 在熟人 / 内部试装场景里完成第一轮真实反馈闭环

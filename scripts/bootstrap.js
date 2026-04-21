@@ -1,15 +1,12 @@
 #!/usr/bin/env node
 /**
- * article-archivist 目录结构一键初始化脚本
- * 优先使用 Obsidian，未安装则自动安装，无法安装则回退到纯文件系统
- * 用法：node bootstrap.js [目标工作目录] [--vault ObsidianVault路径]
+ * article-archivist 一键初始化脚本
+ * 目标：初始化可直接开始喂文章的最小知识系统骨架
  */
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execSync } = require('child_process');
 
-// Re-use install-obsidian.js logic
 const { isObsidianInstalled, installObsidian, launchObsidian, checkCli, ensurePath } = require('./install-obsidian');
 
 const args = process.argv.slice(2);
@@ -27,11 +24,16 @@ for (let i = 0; i < args.length; i++) {
 
 const targetDir = targetDirArg || process.cwd();
 const skillDir = path.resolve(__dirname, '..');
+const assetsDir = path.join(skillDir, 'assets');
 const stateDir = path.join(skillDir, 'state');
 const stateConfigPath = path.join(stateDir, 'config.json');
 const stateLogPath = path.join(stateDir, 'archive-log.jsonl');
 
-const allDirs = [
+function getWorkspaceStateDir(workspacePath) {
+  return path.join(workspacePath, '.article-archivist', 'state');
+}
+
+const workspaceDirs = [
   'raw',
   'daily',
   'memory',
@@ -41,7 +43,11 @@ const allDirs = [
   'wiki/syntheses',
   'summaries',
   'insights',
-  'templates',
+  '日志/日记',
+  '日志/总日志',
+  '洞察',
+  '工作流',
+  '规范&标准'
 ];
 
 const vaultDirs = [
@@ -52,98 +58,49 @@ const vaultDirs = [
   'wiki/comparisons',
   'wiki/syntheses',
   'summaries',
-  'insights',
+  'insights'
 ];
-
-const localDirs = ['memory', 'templates'];
 
 function log(msg) {
   console.log(`[bootstrap] ${msg}`);
 }
 
 function warn(msg) {
-  console.warn(`\x1b[33m[bootstrap] ${msg}\x1b[0m`);
-}
-
-function error(msg) {
-  console.error(`\x1b[31m[bootstrap] ${msg}\x1b[0m`);
-}
-
-function findDefaultVault() {
-  const home = os.homedir();
-  const candidates = [];
-  if (os.platform() === 'darwin') {
-    candidates.push(
-      path.join(home, 'Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Obsidian'),
-      path.join(home, 'iCloudDrive/Obsidian/Obsidian'),
-      path.join(home, 'Documents/Obsidian Vault'),
-      path.join(home, 'Obsidian Vault')
-    );
-  } else if (os.platform() === 'linux') {
-    candidates.push(
-      path.join(home, 'Documents/Obsidian Vault'),
-      path.join(home, 'Obsidian Vault')
-    );
-  } else if (os.platform() === 'win32') {
-    candidates.push(
-      path.join(home, 'Documents', 'Obsidian Vault'),
-      path.join(home, 'Obsidian Vault')
-    );
-  }
-  for (const p of candidates) {
-    if (fs.existsSync(p)) {
-      return p;
-    }
-  }
-  return null;
+  console.warn(`[bootstrap] ${msg}`);
 }
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
     log(`Created: ${dir}`);
-  } else {
-    log(`Exists:  ${dir}`);
   }
 }
 
-function writeIndex(dir) {
-  const indexPath = path.join(dir, 'index.md');
-  const indexTemplate = `# 文章归档索引
-
-> 由 article-archivist 自动生成
-
-## 实体
-- （暂无）
-
-## 概念
-- （暂无）
-
-## 对比
-- （暂无）
-
-## 综述
-- （暂无）
-
-## 摘要
-- （暂无）
-
-## 洞察
-- （暂无）
-`;
-  if (!fs.existsSync(indexPath)) {
-    fs.writeFileSync(indexPath, indexTemplate);
-    log(`Created: ${indexPath}`);
-  } else {
-    log(`Exists:  ${indexPath}`);
+function writeFileIfMissing(filePath, content) {
+  if (!fs.existsSync(filePath)) {
+    ensureDir(path.dirname(filePath));
+    fs.writeFileSync(filePath, content);
+    log(`Created: ${filePath}`);
   }
+}
+
+function readAsset(name) {
+  return fs.readFileSync(path.join(assetsDir, name), 'utf8');
+}
+
+function findDefaultVault() {
+  const home = os.homedir();
+  const candidates = [
+    path.join(home, 'Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Obsidian'),
+    path.join(home, 'Documents/Obsidian Vault'),
+    path.join(home, 'Obsidian Vault')
+  ];
+  return candidates.find((p) => fs.existsSync(p)) || null;
 }
 
 function createSymlink(linkPath, targetPath) {
   try {
-    if (fs.existsSync(linkPath) || fs.lstatSync(linkPath, { throwIfNoEntry: false })) {
-      fs.unlinkSync(linkPath);
-    }
+    if (fs.existsSync(linkPath)) fs.rmSync(linkPath, { recursive: true, force: true });
   } catch {}
   try {
     fs.symlinkSync(targetPath, linkPath, 'dir');
@@ -154,53 +111,36 @@ function createSymlink(linkPath, targetPath) {
 }
 
 function updateState(patch) {
-  try {
-    ensureDir(stateDir);
-    let current = {
-      version: 1,
-      lastVaultPath: null,
-      lastWorkspacePath: null,
-      lastBootstrapMode: null,
-      obsidianInstalled: null,
-      cliEnabled: null,
-      lastExtractor: null,
-      lastFailure: null,
-      archivedUrls: {},
-    };
-    if (fs.existsSync(stateConfigPath)) {
-      current = JSON.parse(fs.readFileSync(stateConfigPath, 'utf8'));
-    }
-    const next = { ...current, ...patch };
-    fs.writeFileSync(stateConfigPath, JSON.stringify(next, null, 2) + '\n');
-    const logEntry = {
-      time: new Date().toISOString(),
-      event: 'bootstrap',
-      mode: next.lastBootstrapMode,
-      workspacePath: next.lastWorkspacePath,
-      vaultPath: next.lastVaultPath,
-      obsidianInstalled: next.obsidianInstalled,
-      cliEnabled: next.cliEnabled,
-      lastFailure: next.lastFailure || null,
-    };
-    fs.appendFileSync(stateLogPath, JSON.stringify(logEntry) + '\n');
-  } catch (err) {
-    warn(`State update skipped: ${err.message}`);
+  ensureDir(stateDir);
+  let current = {
+    version: 2,
+    lastVaultPath: null,
+    lastWorkspacePath: null,
+    lastBootstrapMode: null,
+    obsidianInstalled: null,
+    cliEnabled: null,
+    archivedUrls: {}
+  };
+  if (fs.existsSync(stateConfigPath)) {
+    try { current = JSON.parse(fs.readFileSync(stateConfigPath, 'utf8')); } catch {}
   }
+  const next = { ...current, ...patch };
+  fs.writeFileSync(stateConfigPath, JSON.stringify(next, null, 2) + '\n');
+  fs.appendFileSync(stateLogPath, JSON.stringify({ time: new Date().toISOString(), event: 'bootstrap', ...patch }) + '\n');
 }
 
-// Step 1: Obsidian handling
 let obsidianInstalled = isObsidianInstalled();
 let vaultDir = vaultArg;
 
 if (!obsidianInstalled) {
-  log('Obsidian not detected. Attempting installation...');
+  log('Obsidian not detected. Attempting install...');
   const ok = installObsidian();
   if (ok) {
     ensurePath();
     launchObsidian();
     obsidianInstalled = true;
   } else {
-    warn('Could not install Obsidian automatically. Falling back to plain filesystem mode.');
+    warn('Obsidian install failed. Falling back to plain filesystem mode.');
   }
 } else if (!checkCli()) {
   ensurePath();
@@ -209,62 +149,52 @@ if (!obsidianInstalled) {
 
 if (obsidianInstalled && !vaultDir) {
   vaultDir = findDefaultVault();
-  if (vaultDir) {
-    log(`Detected default Obsidian vault: ${vaultDir}`);
-  }
+  if (vaultDir) log(`Detected default vault: ${vaultDir}`);
 }
 
-if (obsidianInstalled && !vaultDir) {
-  warn('Obsidian is installed, but no vault path was provided and no default vault was found.');
-  warn('To use Obsidian, please rerun with: node bootstrap.js [workdir] --vault /path/to/your/vault');
-}
+ensureDir(targetDir);
 
-// Step 2-3: Create directories
 if (vaultDir) {
-  // Vault gets the visible knowledge dirs
   vaultDirs.forEach((d) => ensureDir(path.join(vaultDir, d)));
-  writeIndex(vaultDir);
-  // Workspace gets local-only dirs and symlinks
-  ensureDir(targetDir);
-  const symlinkNames = ['raw', 'daily', 'wiki', 'summaries', 'insights'];
-  symlinkNames.forEach((name) => {
-    const link = path.join(targetDir, name);
-    const target = path.join(vaultDir, name);
-    if (fs.existsSync(target)) {
-      createSymlink(link, target);
-    }
+  ['raw', 'daily', 'wiki', 'summaries', 'insights'].forEach((name) => {
+    createSymlink(path.join(targetDir, name), path.join(vaultDir, name));
   });
-  localDirs.forEach((d) => ensureDir(path.join(targetDir, d)));
-} else {
-  allDirs.forEach((d) => ensureDir(path.join(targetDir, d)));
-  writeIndex(targetDir);
 }
 
-// Step 5: CLI reminder
-if (obsidianInstalled && !checkCli()) {
-  warn('\n========================================');
-  warn(' IMPORTANT: Please enable Obsidian CLI ');
-  warn('========================================');
-  warn('1. Open Obsidian');
-  warn('2. Settings -> General -> Advanced');
-  warn('3. Enable "Allow external apps to communicate with Obsidian"');
-  warn('4. Restart Obsidian if needed');
-  warn('========================================\n');
-}
+workspaceDirs.forEach((d) => ensureDir(path.join(targetDir, d)));
+
+writeFileIfMissing(path.join(targetDir, 'index.md'), readAsset('default-index.md'));
+writeFileIfMissing(path.join(targetDir, '工作流', '文章归档标准工作流.md'), readAsset('default-workflow.md'));
+writeFileIfMissing(path.join(targetDir, '规范&标准', '文章归档执行清单.md'), readAsset('default-checklist.md'));
+writeFileIfMissing(path.join(targetDir, '洞察', '洞察索引.md'), '# 洞察索引\n\n- （暂无）\n');
+writeFileIfMissing(path.join(targetDir, '记忆.md'), '# 记忆\n\n> 长期稳定的协作真相与方法论。\n');
+
+const workspaceStateDir = getWorkspaceStateDir(targetDir);
+ensureDir(workspaceStateDir);
+writeFileIfMissing(path.join(workspaceStateDir, 'config.json'), JSON.stringify({
+  version: 1,
+  workspacePath: targetDir,
+  createdAt: new Date().toISOString(),
+  lastArchiveAt: null,
+  lastArchivedUrl: null
+}, null, 2) + '\n');
+writeFileIfMissing(path.join(workspaceStateDir, 'archive-log.jsonl'), '');
+
+const today = new Date().toISOString().slice(0, 10);
+writeFileIfMissing(path.join(targetDir, 'daily', `${today}.md`), readAsset('default-daily.md').replace(/\{\{date\}\}/g, today));
+writeFileIfMissing(path.join(targetDir, 'memory', `${today}.md`), readAsset('default-memory.md').replace(/\{\{date\}\}/g, today));
+writeFileIfMissing(path.join(targetDir, '日志', '日记', `${today}.md`), `# ${today} 日记\n\n- （暂无）\n`);
+writeFileIfMissing(path.join(targetDir, '日志', '总日志', '总日志.md'), '# 总日志\n\n- （暂无）\n');
 
 updateState({
   lastVaultPath: vaultDir || null,
   lastWorkspacePath: targetDir,
+  lastWorkspaceStatePath: workspaceStateDir,
   lastBootstrapMode: vaultDir ? 'obsidian' : 'plain-filesystem',
   obsidianInstalled,
-  cliEnabled: checkCli(),
-  lastFailure: null,
+  cliEnabled: checkCli()
 });
 
-log('\n✅ Bootstrap complete.');
-if (vaultDir) {
-  log(`Vault dir:  ${vaultDir}`);
-  log(`Workspace:  ${targetDir}`);
-} else {
-  log(`Target dir: ${targetDir} (plain filesystem mode)`);
-}
+log('Bootstrap complete.');
+log(`Workspace: ${targetDir}`);
+if (vaultDir) log(`Vault: ${vaultDir}`);

@@ -1,9 +1,22 @@
 # State
 
-这个目录用于 skill 自己的状态记忆，不是用户知识库的一部分。
+这个目录现在只用于 **skill 全局状态**，不是用户知识库的一部分。
 
-- `config.json`：最近一次初始化/运行的关键状态，包括最近的 vault/workspace、最近提取器、最近失败原因、已见 URL 哈希
+- `config.json`：最近一次初始化/运行的关键状态，包括最近的 vault/workspace、最近失败原因、最近一次 workspace state 路径
 - `config.example.json`：公开仓库里的示例状态模板
-- `archive-log.jsonl`：每次 bootstrap / extract 的追加日志（一行一个 JSON）
+- `archive-log.jsonl`：skill 级事件日志（如 bootstrap）
 
-目标：让 skill 记住“上次做到哪一步”，并能识别重复 URL、最近失败模式，而不是每次都从零开始。
+## 重要变化
+
+**去重与归档日志不再使用 skill 全局状态。**
+
+每个知识库 workspace 会在自己的目录里维护私有状态：
+
+- `.article-archivist/state/config.json`
+- `.article-archivist/state/archive-log.jsonl`
+
+这样不同 workspace 之间不会互相串 URL、串 rawPath、串运行历史。
+
+目标：
+- skill 全局状态负责诊断与最近一次使用信息
+- workspace 私有状态负责本库 dedupe、归档日志、后续治理基础设施
