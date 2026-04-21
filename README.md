@@ -1,78 +1,80 @@
 # build-your-llm-wiki
 
-Build your own local LLM Wiki from zero to one.
+从 0 到 1 搭建你自己的本地 LLM Wiki。
 
-`build-your-llm-wiki` is a starter kit for OpenClaw / Claude Code users who want more than a bookmark pile. Feed it articles, WeChat posts, blog posts, and long-form references, and it helps turn them into a durable local knowledge system.
+`build-your-llm-wiki` 是一个面向 OpenClaw / Claude Code 用户的 starter kit。它的目标不是帮你再多存一堆链接，而是把公众号文章、博客文章、长文网页逐步沉淀成一个可检索、可升级、可长期复用的本地知识系统。
 
-## Why this exists
-Most "save for later" flows stop at the link or a one-shot summary. This repo is opinionated about a stronger workflow:
-- keep a durable raw archive
-- leave a trace in daily logs and memory
-- decide whether the material deserves entities, concepts, comparisons, syntheses, summaries, or insights
-- keep the whole system navigable instead of letting notes rot into a folder dump
+## 为什么做这个
+大多数“先收藏一下”的流程，最后停在了链接，或者停在一次性的摘要。这套仓库想解决的是更强的一条链路：
+- 保留可回溯的原始归档
+- 在 daily / memory / 总日志里留下痕迹
+- 判断一篇材料该不该升级成实体、概念、对比、综述、主题总结或洞察
+- 让整个知识系统始终可导航，而不是慢慢烂成文件夹堆
 
-## What you get
-When you feed in a URL, the starter kit can:
-- extract article text from WeChat posts, blogs, and long-form web pages
-- write raw archives with lint checks
-- write `memory/`, daily logs, and total logs
-- run six-bucket upgrade checks
-- generate first-draft knowledge pages
-- update index/navigation when the knowledge layer changes
+## 你会得到什么
+当你喂进一个 URL，这套 starter kit 可以自动：
+- 抽取公众号、博客和长文网页正文
+- 写 raw 原始归档并跑 lint
+- 写 `memory/`、daily 和总日志
+- 跑六目录升级检查
+- 生成知识页初稿
+- 在知识层变化时更新 index / 导航页
 
-## Quick start
-### 1. Bootstrap your workspace
+## 快速开始
+### 1. 初始化你的 workspace
 ```bash
 node /path/to/article-archivist/scripts/bootstrap.js [workspace-dir] [--vault /path/to/obsidian/vault]
 ```
 
-If Obsidian is not installed yet, the bootstrap flow will try to install it, add the CLI path to your shell, and launch Obsidian for you. If the Obsidian CLI is still not enabled, the script now prints an explicit next-step guide telling the user to open:
-- `Settings -> General -> Advanced`
-- enable `Allow external apps to communicate with Obsidian`
-- restart Obsidian if needed
-- reload the shell and re-run `node scripts/doctor.js`
+如果用户还没安装 Obsidian，bootstrap 会尝试自动安装、把 CLI 路径写进 shell、并自动启动 Obsidian。
 
-If automatic install fails, the starter kit falls back to plain filesystem mode instead of blocking initialization.
+如果 Obsidian 已经装了，但 CLI 还没开启，脚本会明确打印下一步引导，提示用户去：
+- `设置 -> 通用 -> 高级`
+- 开启 `允许外部应用与 Obsidian 通信`
+- 必要时重启 Obsidian
+- 重新加载 shell 后再执行 `node scripts/doctor.js`
 
-### 2. Run doctor
+如果自动安装失败，starter kit 不会卡死，而是自动回退到 plain filesystem mode 继续初始化。
+
+### 2. 运行 doctor
 ```bash
 node /path/to/article-archivist/scripts/doctor.js
 ```
 
-### 3. Enable stable WeChat extraction (recommended)
+### 3. 开启稳定的微信公众号抓取能力（推荐）
 ```bash
 node /path/to/article-archivist/scripts/ensure_wechat_extractor.js
 ```
 
-This will:
-- check whether `skillhub` is installed
-- install SkillHub CLI if needed
-- install `wechat-article-extractor-skill`
-- let `extract_wechat.js` prefer the installed extractor over the bundled fallback
+这一步会：
+- 检查是否已安装 `skillhub`
+- 必要时安装 SkillHub CLI
+- 安装 `wechat-article-extractor-skill`
+- 让 `extract_wechat.js` 优先使用已安装提取器，而不是只依赖仓内 fallback
 
-### 4. Ingest your first article
+### 4. 喂第一篇文章
 ```bash
 node /path/to/article-archivist/scripts/run_ingest.js <url> [--workspace /path/to/workspace]
 ```
 
-For day-to-day use, this is the only command you need to remember:
+日常使用时，你只需要记住这一个入口：
 ```bash
 node /path/to/article-archivist/scripts/run_ingest.js <url>
 ```
 
-## Current status
-**Beta, but real and usable.**
+## 当前状态
+**Beta，但已经可真实使用。**
 
-Good fit for:
-- internal users
-- friends and early testers
-- people already comfortable with AI workflows
-- anyone who wants to build a local-first knowledge base instead of just collecting links
+当前更适合：
+- 内部用户
+- 熟人试装
+- 已经熟悉 AI workflow 的用户
+- 想搭本地优先知识库，而不是只想存链接的人
 
-Not promising yet:
-- zero-learning-curve onboarding for complete newcomers
-- perfect extraction stability for every site on the web
-- final-polish writing quality for every generated knowledge draft
+当前还不承诺：
+- 完全零学习成本的陌生用户上手体验
+- 所有网站都完美稳定的正文抽取
+- 每一篇生成知识页都已经达到最终成稿质量
 
 ## 当前脚本角色
 - `bootstrap.js`：初始化目录和默认骨架
